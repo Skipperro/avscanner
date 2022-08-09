@@ -15,6 +15,7 @@ RUN service clamav-daemon start
 
 COPY ./requirements.txt /app/requirements.txt
 COPY ./clamd.conf /etc/clamav/clamd.conf
+COPY ./freshclam.conf /etc/clamav/freshclam.conf
 
 WORKDIR /app
 

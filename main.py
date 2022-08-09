@@ -31,6 +31,19 @@ def get_bucket_keys(bucket):
     return output
 
 
+def remove_from_s3(bucket, key):
+    try:
+        print(f'Removing file {key} from {bucket}...')
+        session = get_s3_session()
+        client = session.client('s3')
+        key_root = key.split('/')[0]
+        client.delete_object(Bucket=bucket, Key=key)
+        client.delete_object(Bucket=bucket, Key=key_root)
+        client.delete_object(Bucket=bucket, Key=f'{key_root}/')
+        print(f'File {key} removed successfully.')
+    except Exception as e:
+        raise Exception(f"Error removing file from S3: {e}")
+
 def move_file_between_s3_buckets(source_bucket, source_key, destination_bucket):
     try:
         print(f'Moving file {source_key} to {destination_bucket}...')
@@ -93,8 +106,15 @@ def scan_directory_for_viruses(folder_path):
     # Uses pyclamd to scan the folder for viruses
     # Returns a list of viruses found
     try:
+        os.system('service clamav-daemon restart')
+        time.sleep(5)
         print(f'Scanning directory {folder_path} for viruses...')
         clam = pyclamd.ClamdUnixSocket()
+        if not clam.ping():
+            print("WARNING: Clamd is not running")
+            os.system('service clamav-daemon restart')
+            print('Sleeping for 30 seconds.')
+            time.sleep(30)
         if not clam.ping():
             raise Exception("Clamd is not running")
         viruses = clam.multiscan_file(folder_path)
@@ -105,6 +125,11 @@ def scan_directory_for_viruses(folder_path):
 
 
 def process_file(s3key: str):
+    #If the s3key doesn't end with .zip, remove the file from the uploaded bucket and return
+    if not s3key.lower().endswith('.zip'):
+        remove_from_s3(uploaded_bucket, s3key)
+        return
+
     # Downloads the file from S3
     if not os.path.exists('./downloaded'):
         os.makedirs('./downloaded')
@@ -130,6 +155,16 @@ def process_file(s3key: str):
 
 
 def scanloop():
+    # execute OS command to start clamav-daemon
+    os.system('service clamav-daemon restart')
+    time.sleep(5)
+    clam = pyclamd.ClamdUnixSocket()
+    if not clam.ping():
+        print("WARNING: Clamd is not running")
+        print('Sleeping for 90 seconds.')
+        time.sleep(90)
+    if not clam.ping():
+        raise Exception("Clamd is not running")
     bucket_keys = get_bucket_keys(uploaded_bucket)
     if len(bucket_keys) > 0:
         for s3key in get_bucket_keys(uploaded_bucket):
@@ -179,4 +214,4 @@ if __name__ == '__main__':
                 delete_folder_recursively('./downloaded')
             print('Sleeping for 90 seconds.')
             time.sleep(90)
-            continue
+            exit(2)
