@@ -6,7 +6,7 @@ apt-get autoclean -y
 apt-get autoremove -y
 apt-get clean
 freshclam
-service clamav-freshclam start
+systemctl enable clamav-daemon
 service clamav-daemon start
 
 python3 -u ./main.py
