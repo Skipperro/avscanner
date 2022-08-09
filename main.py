@@ -107,12 +107,8 @@ def scan_directory_for_viruses(folder_path):
     # Returns a list of viruses found
     try:
         print(f'Scanning directory {folder_path} for viruses...')
-        clam = pyclamd.ClamdUnixSocket()
-        if not clam.ping():
-            print("WARNING: Clamd is not running")
-            os.system('service clamav-daemon restart')
-            print('Sleeping for 10 seconds.')
-            time.sleep(10)
+        os.system('service clamav-daemon restart')
+        time.sleep(5)
         clam = pyclamd.ClamdUnixSocket()
         if not clam.ping():
             raise Exception("Clamd is not running")
@@ -157,17 +153,11 @@ def scanloop():
     bucket_keys = get_bucket_keys(uploaded_bucket)
     if len(bucket_keys) > 0:
         os.system('freshclam')
+        os.system('service clamav-daemon restart')
         time.sleep(5)
         clam = pyclamd.ClamdUnixSocket()
         if not clam.ping():
-            print("WARNING: Clamd is not running")
-            os.system('service clamav-daemon restart')
-            print('Sleeping for 10 seconds.')
-            time.sleep(10)
-        clam = pyclamd.ClamdUnixSocket()
-        if not clam.ping():
             raise Exception("Clamd is not running")
-
         # Process the files in the bucket
         for s3key in get_bucket_keys(uploaded_bucket):
             process_file(s3key)
