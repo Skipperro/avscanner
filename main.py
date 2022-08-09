@@ -107,7 +107,7 @@ def scan_directory_for_viruses(folder_path):
     # Returns a list of viruses found
     try:
         print(f'Scanning directory {folder_path} for viruses...')
-        os.system('service clamav-daemon start')
+        os.system('service clamav-daemon restart')
         time.sleep(5)
         clam = pyclamd.ClamdUnixSocket()
         if not clam.ping():
