@@ -1,0 +1,44 @@
+avscanner-image:
+  image: docker:latest
+  stage: image
+  only:
+    - /^avscanner_[0-9]+(?:.[0-9]+)+$/
+  tags:
+    - avscanner
+  before_script:
+    - sudo docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd ./apps/avscanner/
+    - sudo docker build -f ./Dockerfile -t gitlab.arcware.cloud:5050/development/arcware-cloud/avscanner:latest .
+    - sudo docker push gitlab.arcware.cloud:5050/development/arcware-cloud/avscanner:latest
+
+
+avscanner-deploy:
+  stage: deploy
+  only:
+    - /^avscanner_[0-9]+(?:.[0-9]+)+$/
+  tags:
+    - avscanner
+  needs:
+    - avscanner-image
+  variables:
+    GENERAL_ARGS: --restart=always
+    NAME: "avscanner"
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker pull gitlab.arcware.cloud:5050/development/arcware-cloud/avscanner:latest
+    - docker stop $NAME || echo There is no docker to stop
+    - docker rm $NAME || echo There is no docker to remove
+    - >
+      docker run \
+        --name $NAME \
+        $GENERAL_ARGS \
+        -e ACCESS_KEY=$UNREAL_UPLOAD_API_ACCESS_KEY \
+        -e SECRET_KEY=$UNREAL_UPLOAD_API_SECRET_KEY \
+        -e UPLOAD_BUCKET=$UNREAL_UPLOAD_API_UPLOAD_BUCKET \
+        -e CLEAN_BUCKET=$UNREAL_UPLOAD_API_CLEAN_BUCKET \
+        -e INFECTED_BUCKET=$UNREAL_UPLOAD_API_INFECTED_BUCKET \
+        -d \
+        gitlab.arcware.cloud:5050/development/arcware-cloud/avscanner:latest
+    - docker system prune -af --volumes
